@@ -129,3 +129,23 @@ async def delete_guest_chat(item_id: str, sender_name: str):
     except Exception as e:
         print(f"Error deleting guest chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/messages/read/{user1}/{user2}/{item_id}")
+async def mark_messages_read(user1: str, user2: str, item_id: str):
+    from main import supabase
+    
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase client not initialized")
+        
+    try:
+        # Mark messages incoming to user1 from user2 as read
+        response = supabase.table("messages") \
+            .update({"is_read": True}) \
+            .eq("item_id", item_id) \
+            .eq("receiver_id", user1) \
+            .eq("sender_id", user2) \
+            .execute()
+        return {"status": "success", "message": "Messages marked as read"}
+    except Exception as e:
+        print(f"Error marking as read: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

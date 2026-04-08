@@ -1,38 +1,35 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, alpha } from '@mui/material/styles';
 
 const theme = createTheme({
   palette: {
+    mode: 'dark',
     primary: {
-      main: '#2563eb', // Modern blue
-      light: '#60a5fa',
-      dark: '#1d4ed8',
+      main: '#3f80ff', // Vibrant blue
+      light: '#6699ff',
+      dark: '#0052cc',
     },
     secondary: {
-      main: '#7c3aed', // Modern purple
-      light: '#a78bfa',
-      dark: '#5b21b6',
+      main: '#7c4dff', // Deep purple
     },
     background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
+      default: '#0a0c10', // Near black
+      paper: '#161b22',   // Github-like dark gray
     },
     text: {
-      primary: '#1e293b',
-      secondary: '#64748b',
+      primary: '#f0f6fc',
+      secondary: '#8b949e',
     },
+    divider: 'rgba(255, 255, 255, 0.1)',
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h1: { fontWeight: 800 },
-    h2: { fontWeight: 800 },
-    h3: { fontWeight: 700 },
+    fontFamily: '"Outfit", "Inter", "Roboto", sans-serif',
+    h1: { fontWeight: 800, letterSpacing: '-0.02em' },
+    h2: { fontWeight: 800, letterSpacing: '-0.02em' },
+    h3: { fontWeight: 800, letterSpacing: '-0.01em' },
     h4: { fontWeight: 700 },
-    h5: { fontWeight: 600 },
+    h5: { fontWeight: 700 },
     h6: { fontWeight: 600 },
-    button: {
-      textTransform: 'none',
-      fontWeight: 600,
-    },
+    button: { textTransform: 'none', fontWeight: 600 },
   },
   shape: {
     borderRadius: 12,
@@ -40,22 +37,58 @@ const theme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-        root: {
-          borderRadius: 8,
-          padding: '8px 20px',
-        },
-        contained: {
-          boxShadow: 'none',
+        root: ({ ownerState }: { ownerState: any }) => ({
+          borderRadius: 10,
+          padding: '10px 20px',
+          textTransform: 'none',
+          fontWeight: 600,
+          transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
           },
-        },
+          ...(ownerState.variant === 'contained' && ownerState.color === 'primary' && {
+            background: 'linear-gradient(135deg, #3f80ff 0%, #7c4dff 100%)',
+            boxShadow: '0 4px 14px 0 rgba(63, 128, 255, 0.39)',
+            border: 'none',
+          }),
+        }),
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+          backgroundImage: 'none',
+          backgroundColor: '#161b22',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+        },
+        elevation1: {
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: alpha('#0a0c10', 0.8),
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: 'none',
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            '& fieldset': {
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+            },
+            '&:hover fieldset': {
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+            },
+          },
         },
       },
     },

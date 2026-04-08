@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getMessageThread, sendMessage } from '../services/api';
+import { getMessageThread, sendMessage, markMessagesRead } from '../services/api';
 
 const Chat: React.FC = () => {
   const { userId, itemId } = useParams<{ userId: string, itemId: string }>();
@@ -49,6 +49,12 @@ const Chat: React.FC = () => {
       // If no messages yet, pre-fill with item info
       if (data.length === 0 && !newMessage) {
         setNewMessage(`Hey, I found your item [${itemId}]. Let's coordinate the return!`);
+      }
+
+      // Mark incoming messages as read
+      const hasUnread = data.some((m: any) => m.receiver_id === user!.id && !m.is_read);
+      if (hasUnread) {
+        await markMessagesRead(user!.id, userId!, itemId!);
       }
     } catch (error) {
       console.error('Error fetching thread:', error);

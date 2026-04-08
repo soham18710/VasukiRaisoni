@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS public.messages (
     sender_email TEXT,
     message_text TEXT NOT NULL,
     receiver_id UUID NOT NULL, -- references auth.users(id)
+    is_read BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

@@ -3,8 +3,6 @@ import {
   Container, 
   Typography, 
   Grid, 
-  Card, 
-  CardContent, 
   Button, 
   Box, 
   Avatar, 
@@ -16,13 +14,14 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Divider
+  Divider,
+  alpha,
+  useTheme,
+  Stack
 } from '@mui/material';
 import { 
   Add as AddIcon, 
   QrCode as QrCodeIcon, 
-  Message as MessageIcon, 
-  LocationOn as LocationIcon,
   MoreVert as MoreVertIcon,
   Delete as DeleteIcon,
   CheckCircle as SafeIcon,
@@ -30,14 +29,14 @@ import {
   FileDownload as DownloadIcon
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getUserItems, updateItemStatus, deleteItem, generateQR } from '../services/api';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const theme = useTheme();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   // Menu State
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -77,7 +76,7 @@ const Dashboard: React.FC = () => {
       const newStatus = !selectedItem.is_lost;
       await updateItemStatus(selectedItem.id, newStatus);
       handleMenuClose();
-      fetchItems(); // Refresh list
+      fetchItems(); 
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -89,7 +88,7 @@ const Dashboard: React.FC = () => {
       try {
         await deleteItem(selectedItem.id);
         handleMenuClose();
-        fetchItems(); // Refresh list
+        fetchItems();
       } catch (error) {
         console.error('Error deleting item:', error);
       }
@@ -116,144 +115,120 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={4}>
-        {/* Welcome Section */}
-        <Grid size={{ xs: 12 }}>
-          <Paper 
-            sx={{ 
-              p: 4, 
-              display: 'flex', 
-              flexDirection: { xs: 'column', md: 'row' },
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'linear-gradient(90deg, #2563eb 0%, #7c3aed 100%)',
-              color: 'white',
-              borderRadius: 4
-            }}
-          >
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                Explorer, Welcome Back!
-              </Typography>
-              <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                Manage your {items.length} smart tags and track your belongings.
-              </Typography>
-              <Button 
-                component={Link}
-                to="/create-item"
-                variant="contained" 
-                startIcon={<AddIcon />}
-                sx={{ 
-                  mt: 3, 
-                  bgcolor: 'white', 
-                  color: 'primary.main',
-                  '&:hover': { bgcolor: '#f1f5f9' },
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 3
-                }}
-              >
-                Register New Item
-              </Button>
-            </Box>
-            <Avatar 
-              sx={{ 
-                width: 120, 
-                height: 120, 
-                border: '4px solid rgba(255,255,255,0.3)',
-                mt: { xs: 3, md: 0 },
-                display: { xs: 'none', sm: 'flex' }
-              }}
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`}
-            />
-          </Paper>
-        </Grid>
+  const stats = [
+    { label: 'Total Items', value: items.length, icon: <QrCodeIcon />, color: theme.palette.primary.main },
+    { label: 'Currently Lost', value: items.filter(i => i.is_lost).length, icon: <LostIcon />, color: theme.palette.error.main },
+  ];
 
-        {/* Quick Stats/Actions */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>My Items</Typography>
-            <Button size="small" sx={{ textTransform: 'none' }} onClick={fetchItems}>Refresh</Button>
+  return (
+    <Container maxWidth="lg" sx={{ py: 6 }}>
+      {/* Header Section */}
+      <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <Box>
+          <Typography variant="h3" sx={{ fontWeight: 900, mb: 1, letterSpacing: '-0.03em' }}>
+            Hello, {user?.user_metadata?.full_name?.split(' ')[0] || 'User'}!
+          </Typography>
+          <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+            Here is a snapshot of your protected items.
+          </Typography>
+        </Box>
+        <Button 
+          component={Link} 
+          to="/create-item" 
+          variant="contained" 
+          startIcon={<AddIcon />}
+          sx={{ height: 48, px: 3 }}
+        >
+          Register New Tag
+        </Button>
+      </Box>
+
+      {/* Stats Row */}
+      <Grid container spacing={3} sx={{ mb: 6 }}>
+        {stats.map((s, i) => (
+          <Grid key={i} size={{ xs: 12, sm: 4 }}>
+            <Paper sx={{ p: 3, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{ bgcolor: alpha(s.color, 0.1), color: s.color, borderRadius: 2 }}>
+                {s.icon}
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+                  {s.label}
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 800 }}>{s.value}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Grid container spacing={4}>
+        {/* Main Content: Items List */}
+        <Grid size={{ xs: 12 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 800 }}>My Protected Items</Typography>
+            <Button size="small" onClick={fetchItems} sx={{ color: 'text.secondary' }}>Refresh</Button>
           </Box>
           
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress />
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+              <CircularProgress size={32} />
             </Box>
           ) : items.length > 0 ? (
-            <Grid container spacing={2}>
+            <Stack spacing={2}>
               {items.map((item) => (
-                <Grid size={{ xs: 12, sm: 6 }} key={item.id}>
-                  <Card sx={{ borderRadius: 3, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)' } }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Box sx={{ p: 1.5, bgcolor: 'primary.light', borderRadius: 2, mr: 2, color: 'white' }}>
-                          <QrCodeIcon />
-                        </Box>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="h6" noWrap sx={{ fontWeight: 600 }}>{item.item_name}</Typography>
-                          <Typography variant="caption" color="text.secondary">ID: {item.qr_id}</Typography>
-                        </Box>
-                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, item)}>
-                          <MoreVertIcon />
-                        </IconButton>
-                      </Box>
-                      
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip 
-                          size="small" 
-                          label={item.is_lost ? "Status: Lost" : "Status: Safe"} 
-                          color={item.is_lost ? "error" : "success"}
-                          variant="outlined"
-                        />
-                        <Chip 
-                          size="small" 
-                          label="History" 
-                          icon={<LocationIcon sx={{ fontSize: '14px !important' }} />}
-                          variant="outlined"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
+                <Paper 
+                  key={item.id}
+                  sx={{ 
+                    p: 2, 
+                    borderRadius: 4, 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    transition: 'all 0.2s',
+                    border: '1px solid transparent',
+                    '&:hover': {
+                      borderColor: 'rgba(255,255,255,0.1)',
+                      bgcolor: 'rgba(255,255,255,0.02)',
+                      transform: 'translateX(4px)'
+                    }
+                  }}
+                >
+                  <Avatar 
+                    sx={{ 
+                      bgcolor: item.is_lost ? alpha(theme.palette.error.main, 0.1) : alpha(theme.palette.success.main, 0.1),
+                      color: item.is_lost ? 'error.main' : 'success.main',
+                      borderRadius: 2,
+                      width: 50,
+                      height: 50,
+                      mr: 2
+                    }}
+                  >
+                    <QrCodeIcon />
+                  </Avatar>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{item.item_name}</Typography>
+                    <Typography variant="caption" color="text.secondary">Tag ID: {item.qr_id.toUpperCase()}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Chip 
+                      label={item.is_lost ? "LOST" : "SAFE"} 
+                      color={item.is_lost ? "error" : "success"}
+                      size="small"
+                      sx={{ fontWeight: 800, fontSize: '0.7rem', height: 24 }}
+                    />
+                    <IconButton onClick={(e) => handleMenuOpen(e, item)}>
+                      <MoreVertIcon />
+                    </IconButton>
+                  </Box>
+                </Paper>
               ))}
-            </Grid>
+            </Stack>
           ) : (
-            <Paper sx={{ p: 8, textAlign: 'center', borderRadius: 4, bgcolor: 'rgba(0,0,0,0.02)', border: '1px dashed', borderColor: 'divider' }}>
-              <QrCodeIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">No items registered yet.</Typography>
-              <Button component={Link} to="/create-item" sx={{ mt: 2 }}>Register your first item</Button>
+            <Paper sx={{ p: 8, textAlign: 'center', borderRadius: 6, border: '2px dashed rgba(255,255,255,0.05)', bgcolor: 'transparent' }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>No items registered</Typography>
+              <Button component={Link} to="/create-item" variant="outlined" size="small">Get your first QR tag</Button>
             </Paper>
           )}
-        </Grid>
-
-        {/* Sidebar/Activity */}
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>Quick Actions</Typography>
-          <Paper sx={{ p: 3, borderRadius: 4, mb: 3 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Button 
-                fullWidth 
-                variant="outlined" 
-                startIcon={<MessageIcon />} 
-                onClick={() => navigate('/messages')}
-                sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: 2 }}
-              >
-                Messages Inbox
-              </Button>
-              <Button 
-                fullWidth 
-                variant="outlined" 
-                startIcon={<LocationIcon />} 
-                sx={{ justifyContent: 'flex-start', py: 1.5, borderRadius: 2 }}
-              >
-                Recent Activity
-              </Button>
-            </Box>
-          </Paper>
-
         </Grid>
       </Grid>
 
@@ -264,26 +239,32 @@ const Dashboard: React.FC = () => {
         onClose={handleMenuClose}
         slotProps={{
           paper: {
-            sx: { borderRadius: 3, width: 200, mt: 1, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }
+            sx: { borderRadius: 3, width: 220, mt: 1, p: 0.5, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }
           }
         }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <MenuItem onClick={handleToggleStatus}>
+        <MenuItem onClick={handleToggleStatus} sx={{ borderRadius: 1.5 }}>
           <ListItemIcon>
             {selectedItem?.is_lost ? <SafeIcon fontSize="small" color="success" /> : <LostIcon fontSize="small" color="error" />}
           </ListItemIcon>
-          <ListItemText>{selectedItem?.is_lost ? 'Mark as Safe' : 'Mark as Lost'}</ListItemText>
+          <ListItemText>
+             <Typography sx={{ fontWeight: 600 }}>{selectedItem?.is_lost ? 'Mark as Safe' : 'Mark as Lost'}</Typography>
+          </ListItemText>
         </MenuItem>
-        <MenuItem onClick={handleDownloadQR}>
+        <MenuItem onClick={handleDownloadQR} sx={{ borderRadius: 1.5 }}>
           <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Download QR</ListItemText>
+          <ListItemText>
+            <Typography sx={{ fontWeight: 600 }}>Download QR</Typography>
+          </ListItemText>
         </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleDeleteItem} sx={{ color: 'error.main' }}>
+        <Divider sx={{ my: 0.5 }} />
+        <MenuItem onClick={handleDeleteItem} sx={{ borderRadius: 1.5, color: 'error.main' }}>
           <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
-          <ListItemText>Delete Item</ListItemText>
+          <ListItemText>
+            <Typography sx={{ fontWeight: 600 }}>Delete Item</Typography>
+          </ListItemText>
         </MenuItem>
       </Menu>
     </Container>

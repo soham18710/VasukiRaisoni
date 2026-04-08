@@ -69,4 +69,9 @@ export const deleteGuestChat = async (itemId: string, senderName: string) => {
   return response.data;
 };
 
+export const markMessagesRead = async (user1: string, user2: string, itemId: string) => {
+  const response = await api.put(`/messages/read/${user1}/${user2}/${itemId}`);
+  return response.data;
+};
+
 export default api;

@@ -11,23 +11,46 @@ import {
   Menu,
   MenuItem,
   Tooltip,
-  Divider
+  Divider,
+  alpha,
+  Badge
 } from '@mui/material';
 import { 
   QrCode as QrCodeIcon, 
   Dashboard as DashboardIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
-  Add as AddIcon
+  Apps as AppsIcon
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { getUserMessages } from '../services/api';
 
 const Navbar: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  // Poll for unread messages
+  React.useEffect(() => {
+    if (!user) return;
+    
+    const checkUnread = async () => {
+      try {
+        const messages = await getUserMessages(user.id);
+        const count = messages.filter((m: any) => m.receiver_id === user.id && !m.is_read).length;
+        setUnreadCount(count);
+      } catch (err) {
+        console.error("Failed to fetch unread count", err);
+      }
+    };
+
+    checkUnread();
+    const interval = setInterval(checkUnread, 5000); // Check every 5s
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
@@ -44,103 +67,130 @@ const Navbar: React.FC = () => {
   };
 
   const isAuthPage = ['/login', '/signup'].includes(location.pathname);
-
   if (isAuthPage && !user) return null;
 
+  const NavButton = ({ to, icon, label, badge }: any) => {
+    const active = location.pathname === to;
+    return (
+      <Button
+        component={Link}
+        to={to}
+        startIcon={badge ? <Badge color="error" variant="dot" overlap="circular">{icon}</Badge> : icon}
+        sx={{ 
+          color: active ? 'primary.main' : 'text.secondary', 
+          textTransform: 'none',
+          fontWeight: active ? 700 : 500,
+          bgcolor: active ? alpha('#3f80ff', 0.08) : 'transparent',
+          '&:hover': { bgcolor: alpha('#3f80ff', 0.05) },
+          borderRadius: 2,
+          px: 2,
+          mr: 1
+        }}
+      >
+        {label}
+      </Button>
+    );
+  };
+
   return (
-    <AppBar position="sticky" elevation={0} sx={{ backgroundColor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
+    <AppBar position="sticky" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
       <Container maxWidth="lg">
-        <Toolbar disableGutters>
-          <QrCodeIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1, color: 'primary.main' }} />
-          <Typography
-            variant="h6"
-            noWrap
-            component={Link}
-            to="/"
-            sx={{
-              mr: 2,
-              display: { xs: 'none', md: 'flex' },
-              fontWeight: 800,
-              letterSpacing: '.1rem',
-              color: 'text.primary',
-              textDecoration: 'none',
+        <Toolbar disableGutters sx={{ height: 72 }}>
+          {/* Logo Section - Now flexible to push items to the right */}
+          <Box 
+            component={Link} 
+            to="/" 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              textDecoration: 'none', 
+              mr: 4,
+              flexGrow: 1 // This pushes everything else to the right
             }}
           >
-            FINDLY
-          </Typography>
-
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'flex' }, gap: 1 }}>
-            {user && (
-              <>
-                <Button
-                  component={Link}
-                  to="/dashboard"
-                  startIcon={<DashboardIcon />}
-                  sx={{ color: location.pathname === '/dashboard' ? 'primary.main' : 'text.secondary', textTransform: 'none' }}
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  component={Link}
-                  to="/create-item"
-                  startIcon={<AddIcon />}
-                  variant="outlined"
-                  size="small"
-                  sx={{ ml: 1, textTransform: 'none', borderRadius: 2, display: { xs: 'none', sm: 'flex' } }}
-                >
-                  Register Item
-                </Button>
-              </>
-            )}
+            <Box sx={{ 
+              background: 'linear-gradient(135deg, #3f80ff 0%, #7c4dff 100%)', 
+              p: 0.8, 
+              borderRadius: 2, 
+              display: 'flex',
+              mr: 1.5,
+              boxShadow: '0 4px 12px rgba(63, 128, 255, 0.4)'
+            }}>
+              <QrCodeIcon sx={{ color: 'white', fontSize: 24 }} />
+            </Box>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 900,
+                letterSpacing: '-0.02em',
+                color: 'text.primary',
+                fontSize: '1.4rem'
+              }}
+            >
+              FINDLY
+            </Typography>
           </Box>
 
-          <Box sx={{ flexGrow: 0 }}>
-            {user ? (
+          {/* User & Navigation Section - Combined on the right */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {user && (
+              <Box sx={{ display: 'flex', gap: 1, mr: 1 }}>
+                <NavButton to="/dashboard" icon={<DashboardIcon sx={{ fontSize: 20 }} />} label="Dashboard" />
+                <NavButton 
+                  to="/messages" 
+                  icon={<AppsIcon sx={{ fontSize: 20 }} />} 
+                  label="Inbox" 
+                  badge={unreadCount > 0} 
+                />
+              </Box>
+            )}
+
+            {!user ? (
+              <Box sx={{ display: 'flex', gap: 1.5 }}>
+                <Button component={Link} to="/login" sx={{ textTransform: 'none', color: 'text.secondary', fontWeight: 600 }}>Login</Button>
+                <Button component={Link} to="/signup" variant="contained" sx={{ borderRadius: 2 }}>Sign Up</Button>
+              </Box>
+            ) : (
               <>
-                <Tooltip title="Open settings">
-                  <IconButton onClick={handleOpenUserMenu} sx={{ p: 0.5, border: '2px solid', borderColor: 'primary.light' }}>
-                    <Avatar alt={user.email} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} sx={{ width: 32, height: 32 }} />
+                <Tooltip title="Account">
+                  <IconButton onClick={handleOpenUserMenu} sx={{ p: 0, border: '2px solid', borderColor: alpha('#3f80ff', 0.5) }}>
+                    <Avatar 
+                      alt={user.email || 'User'} 
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} 
+                      sx={{ width: 34, height: 34 }} 
+                    />
                   </IconButton>
                 </Tooltip>
                 <Menu
                   sx={{ mt: '45px' }}
-                  id="menu-appbar"
                   anchorEl={anchorElUser}
-                  anchorOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  keepMounted
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
                   open={Boolean(anchorElUser)}
                   onClose={handleCloseUserMenu}
+                  anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  slotProps={{
+                    paper: {
+                      sx: { borderRadius: 3, width: 220, mt: 1, p: 0.5, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }
+                    }
+                  }}
                 >
-                  <Box sx={{ px: 2, py: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                      {user.user_metadata?.full_name || 'User'}
+                  <Box sx={{ px: 2, py: 1.5 }}>
+                    <Typography variant="subtitle2" noWrap sx={{ fontWeight: 800 }}>
+                      {user.user_metadata?.full_name || 'My Account'}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
                       {user.email}
                     </Typography>
                   </Box>
-                  <Divider />
-                  <MenuItem onClick={() => { handleCloseUserMenu(); navigate('/profile'); }}>
-                    <PersonIcon sx={{ mr: 1, fontSize: 20 }} /> Profile
+                  <Divider sx={{ my: 0.5 }} />
+                  <MenuItem onClick={() => { handleCloseUserMenu(); navigate('/profile'); }} sx={{ borderRadius: 1.5 }}>
+                    <PersonIcon sx={{ mr: 1.5, fontSize: 20, color: 'text.secondary' }} /> Profile
                   </MenuItem>
-                  <MenuItem onClick={handleLogout}>
-                    <LogoutIcon sx={{ mr: 1, fontSize: 20, color: 'error.main' }} /> 
-                    <Typography color="error">Logout</Typography>
+                  <MenuItem onClick={handleLogout} sx={{ borderRadius: 1.5, color: 'error.main' }}>
+                    <LogoutIcon sx={{ mr: 1.5, fontSize: 20 }} /> Logout
                   </MenuItem>
                 </Menu>
               </>
-            ) : (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button component={Link} to="/login" sx={{ textTransform: 'none' }}>Login</Button>
-                <Button component={Link} to="/signup" variant="contained" sx={{ textTransform: 'none', borderRadius: 2 }}>Sign Up</Button>
-              </Box>
             )}
           </Box>
         </Toolbar>
