@@ -9,6 +9,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import ScanItem from './pages/ScanItem';
 import Messages from './pages/Messages';
+import Chat from './pages/Chat';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/create-item" element={<CreateItem />} />
               <Route path="/messages" element={<Messages />} />
+              <Route path="/chat/:userId/:itemId" element={<Chat />} />
               <Route path="/profile" element={
                 <Box sx={{ p: 4, textAlign: 'center' }}>
                   <h1>Profile Page</h1>

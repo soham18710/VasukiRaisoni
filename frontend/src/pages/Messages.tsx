@@ -8,7 +8,6 @@ import {
   Divider, 
   List, 
   ListItem, 
-  ListItemText, 
   ListItemAvatar,
   Chip,
   CircularProgress,
@@ -22,9 +21,11 @@ import {
   CalendarMonth as DateIcon,
   Person as PersonIcon,
   DeleteSweep as SpamIcon,
-  CheckCircle as ValidIcon
+  CheckCircle as ValidIcon,
+  Lock as LockIcon
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { getUserMessages } from '../services/api';
 
 const Messages: React.FC = () => {
@@ -33,6 +34,7 @@ const Messages: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -53,8 +55,34 @@ const Messages: React.FC = () => {
     }
   };
 
-  const activeMessages = messages.filter(msg => msg.items?.is_lost === true);
-  const spamMessages = messages.filter(msg => msg.items?.is_lost !== true);
+  const handleMessageClick = (msg: any) => {
+    if (msg.sender_id) {
+      navigate(`/chat/${msg.sender_id}/${msg.item_id}`);
+    } else {
+      alert("This person is not on the platform. You can only contact them via the email/phone they provided (if any).");
+    }
+  };
+
+  // Group messages by conversation (sender + item)
+  const groupMessages = (msgList: any[]) => {
+    const groups: { [key: string]: any } = {};
+    
+    msgList.forEach(msg => {
+      // Unique key for conversation: combination of sender (ID/Email/Name) and item
+      const conversationKey = `${msg.sender_id || msg.sender_email || msg.sender_name}_${msg.item_id}`;
+      
+      if (!groups[conversationKey] || new Date(msg.created_at) > new Date(groups[conversationKey].created_at)) {
+        groups[conversationKey] = msg;
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  };
+
+  const activeMessages = groupMessages(messages.filter(msg => msg.items?.is_lost === true));
+  const spamMessages = groupMessages(messages.filter(msg => msg.items?.is_lost !== true));
 
   const currentMessages = tabValue === 0 ? activeMessages : spamMessages;
 
@@ -64,10 +92,10 @@ const Messages: React.FC = () => {
         <Paper sx={{ p: 8, textAlign: 'center', borderRadius: 4, bgcolor: 'rgba(0,0,0,0.01)', border: '1px dashed', borderColor: 'divider' }}>
           {tabValue === 0 ? <MessageIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} /> : <SpamIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />}
           <Typography variant="h6" color="text.secondary">
-            {tabValue === 0 ? "No active messages" : "No messages in spam"}
+            {tabValue === 0 ? "No active conversations" : "No conversations in spam"}
           </Typography>
           <Typography variant="body2" color="text.disabled">
-            {tabValue === 0 ? "When someone finds a lost item, their messages appear here." : "Messages for items marked as 'Safe' are moved here automatically."}
+            {tabValue === 0 ? "When someone finds a lost item, your chats appear here." : "Conversations for items marked as 'Safe' are moved here automatically."}
           </Typography>
         </Paper>
       );
@@ -80,60 +108,62 @@ const Messages: React.FC = () => {
             <React.Fragment key={msg.id}>
               <ListItem 
                 alignItems="flex-start" 
+                onClick={() => handleMessageClick(msg)}
                 sx={{ 
                   p: 3, 
-                  '&:hover': { bgcolor: 'rgba(0,0,0,0.01)' },
-                  transition: 'background 0.2s'
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'rgba(0,0,0,0.015)' },
+                  transition: 'background 0.2s',
+                  position: 'relative'
                 }}
               >
+                {!msg.sender_id && (
+                  <LockIcon sx={{ position: 'absolute', top: 12, right: 12, fontSize: 16, color: 'text.disabled' }} />
+                )}
                 <ListItemAvatar>
                   <Avatar sx={{ bgcolor: tabValue === 0 ? 'primary.main' : 'text.disabled' }}>
                     <PersonIcon />
                   </Avatar>
                 </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {msg.sender_name}
-                        </Typography>
-                        {msg.sender_id && (
-                          <Chip label="Verified User" size="small" color="success" variant="filled" sx={{ height: 20, fontSize: '10px' }} />
-                        )}
-                      </Box>
-                      <Chip 
-                        icon={<InventoryIcon sx={{ fontSize: '14px !important' }} />} 
-                        label={msg.items?.item_name || 'Deleted Item'} 
-                        size="small" 
-                        variant="outlined" 
-                        color={tabValue === 0 ? "primary" : "default"}
-                      />
-                    </Box>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography
-                        component="span"
-                        variant="body1"
-                        color="text.primary"
-                        sx={{ display: 'block', mb: 1 }}
-                      >
-                        {msg.message_text}
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                        {msg.sender_name}
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <DateIcon sx={{ fontSize: 14 }} /> {new Date(msg.created_at).toLocaleDateString()}
-                        </Typography>
-                        {msg.sender_email && (
-                          <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
-                            Contact: {msg.sender_email}
-                          </Typography>
-                        )}
-                      </Box>
+                      {msg.sender_id && (
+                        <Chip label="Verified User" size="small" color="success" variant="filled" sx={{ height: 20, fontSize: '10px' }} />
+                      )}
                     </Box>
-                  }
-                />
+                    <Chip 
+                      icon={<InventoryIcon sx={{ fontSize: '14px !important' }} />} 
+                      label={msg.items?.item_name || 'Deleted Item'} 
+                      size="small" 
+                      variant="outlined" 
+                      color={tabValue === 0 ? "primary" : "default"}
+                    />
+                  </Box>
+                  
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    noWrap
+                    sx={{ display: 'block', mb: 1, fontWeight: 500 }}
+                  >
+                    {msg.message_text}
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <DateIcon sx={{ fontSize: 14 }} /> {new Date(msg.created_at).toLocaleDateString()}
+                    </Typography>
+                    {msg.sender_id && (
+                      <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
+                        Open Chat
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
               </ListItem>
               {index < msgList.length - 1 && <Divider component="li" />}
             </React.Fragment>
@@ -161,7 +191,7 @@ const Messages: React.FC = () => {
           <Tab 
             icon={<ValidIcon />} 
             iconPosition="start" 
-            label={`Lost Items (${activeMessages.length})`} 
+            label={`Active Chats (${activeMessages.length})`} 
             sx={{ fontWeight: 700 }}
           />
           <Tab 

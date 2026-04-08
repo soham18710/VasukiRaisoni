@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Container, 
   Typography, 
@@ -37,6 +37,7 @@ const ScanItem: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -166,6 +167,25 @@ const ScanItem: React.FC = () => {
               <Alert severity="success" sx={{ mb: 3 }}>
                 Message sent successfully! The owner has been notified.
               </Alert>
+            ) : user ? (
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="body1" sx={{ mb: 3 }}>
+                  You are logged in! You can start a direct one-to-one chat with the owner for a faster recovery.
+                </Typography>
+                <Button 
+                  fullWidth
+                  variant="contained" 
+                  size="large"
+                  onClick={() => navigate(`/chat/${item.user_id}/${item.qr_id}`)}
+                  startIcon={<MessageIcon />}
+                  sx={{ py: 2, borderRadius: 3, fontWeight: 'bold', fontSize: '1.1rem' }}
+                >
+                  Start Secure Chat
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+                  A secure thread will be created in your Inbox.
+                </Typography>
+              </Box>
             ) : (
               <form onSubmit={handleSendMessage}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

@@ -64,3 +64,24 @@ async def get_user_messages(user_id: str):
     except Exception as e:
         print(f"Error fetching messages: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.get("/messages/thread/{user1}/{user2}/{item_id}", response_model=List[dict])
+async def get_message_thread(user1: str, user2: str, item_id: str):
+    from main import supabase
+    
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase client not initialized")
+        
+    try:
+        # Get messages between two users regarding a specific item
+        # Participants are either sender or receiver
+        response = supabase.table("messages") \
+            .select("*") \
+            .eq("item_id", item_id) \
+            .or_(f"and(sender_id.eq.{user1},receiver_id.eq.{user2}),and(sender_id.eq.{user2},receiver_id.eq.{user1})") \
+            .order("created_at", desc=False) \
+            .execute()
+        return response.data
+    except Exception as e:
+        print(f"Error fetching thread: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

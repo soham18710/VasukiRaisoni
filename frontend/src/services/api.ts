@@ -54,4 +54,9 @@ export const getUserMessages = async (userId: string) => {
   return response.data;
 };
 
+export const getMessageThread = async (user1: string, user2: string, itemId: string) => {
+  const response = await api.get(`/messages/thread/${user1}/${user2}/${itemId}`);
+  return response.data;
+};
+
 export default api;
