@@ -7,6 +7,7 @@ router = APIRouter(tags=["messages"])
 
 class MessageCreate(BaseModel):
     item_id: str
+    sender_id: Optional[str] = None
     sender_name: str
     sender_email: Optional[str] = None
     message_text: str
@@ -30,6 +31,7 @@ async def send_message(msg: MessageCreate):
         
     data = {
         "item_id": msg.item_id,
+        "sender_id": msg.sender_id,
         "sender_name": msg.sender_name,
         "sender_email": msg.sender_email,
         "message_text": msg.message_text,
@@ -37,11 +39,12 @@ async def send_message(msg: MessageCreate):
     }
     
     try:
+        print(f"Attempting to send message for item {msg.item_id} to receiver {msg.receiver_id}")
         response = supabase.table("messages").insert(data).execute()
         return {"status": "success", "message": "Message sent to owner"}
     except Exception as e:
-        print(f"Error sending message: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        print(f"Error sending message for item {msg.item_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/messages/user/{user_id}", response_model=List[dict])
 async def get_user_messages(user_id: str):

@@ -119,7 +119,7 @@ const Navbar: React.FC = () => {
                   onClose={handleCloseUserMenu}
                 >
                   <Box sx={{ px: 2, py: 1 }}>
-                    <Typography variant="body2" fontWeight="bold">
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                       {user.user_metadata?.full_name || 'User'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">

@@ -25,6 +25,18 @@ export const getUserItems = async (userId: string) => {
   return response.data;
 };
 
+export const updateItemStatus = async (itemId: string, isLost: boolean) => {
+  const response = await api.patch(`/items/${itemId}/status`, null, {
+    params: { is_lost: isLost }
+  });
+  return response.data;
+};
+
+export const deleteItem = async (itemId: string) => {
+  const response = await api.delete(`/items/${itemId}`);
+  return response.data;
+};
+
 // QR API
 export const generateQR = async (qrData: any) => {
   const response = await api.post('/qr/generate', qrData);

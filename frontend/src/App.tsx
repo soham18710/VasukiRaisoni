@@ -7,6 +7,8 @@ import CreateItem from './pages/CreateItem';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import ScanItem from './pages/ScanItem';
+import Messages from './pages/Messages';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -20,11 +22,13 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/scan/:qrId" element={<ScanItem />} />
             
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/create-item" element={<CreateItem />} />
+              <Route path="/messages" element={<Messages />} />
               <Route path="/profile" element={
                 <Box sx={{ p: 4, textAlign: 'center' }}>
                   <h1>Profile Page</h1>
@@ -32,14 +36,6 @@ function App() {
                 </Box>
               } />
             </Route>
-
-            {/* Item Scan Route (Public) */}
-            <Route path="/scan/:itemId" element={
-              <Box sx={{ p: 4, textAlign: 'center' }}>
-                <h1>Item Scan Proof of Concept</h1>
-                <p>Retrieving item details...</p>
-              </Box>
-            } />
 
             {/* Redirects */}
             <Route path="/create" element={<Navigate to="/create-item" replace />} />

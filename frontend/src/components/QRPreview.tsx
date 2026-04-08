@@ -27,7 +27,7 @@ const QRPreview: React.FC<QRPreviewProps> = ({ qrImageBase64 }) => {
 
   return (
     <Paper sx={{ p: 4, textAlign: 'center', height: '100%', borderRadius: 4, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <Typography variant="h5" fontWeight="700" gutterBottom>
+      <Typography variant="h5" sx={{ fontWeight: 700 }} gutterBottom>
         Your Smart QR Tag
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>

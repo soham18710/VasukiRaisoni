@@ -75,7 +75,7 @@ const CreateItem: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h3" fontWeight="800" color="primary" gutterBottom>
+        <Typography variant="h3" sx={{ fontWeight: 800 }} color="primary" gutterBottom>
           Register New Item
         </Typography>
         <Typography variant="h6" color="text.secondary">
@@ -84,7 +84,7 @@ const CreateItem: React.FC = () => {
       </Box>
 
       <Grid container spacing={4}>
-        <Grid item xs={12} md={7}>
+        <Grid size={{ xs: 12, md: 7 }}>
           <Paper sx={{ p: 4, borderRadius: 4 }}>
             <form onSubmit={handleSubmit}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -96,8 +96,10 @@ const CreateItem: React.FC = () => {
                   placeholder="e.g. Blue Backpack, My Keys"
                   value={formData.item_name}
                   onChange={handleChange}
-                  InputProps={{
-                    startAdornment: <InventoryIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  slotProps={{
+                    input: {
+                      startAdornment: <InventoryIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }
                   }}
                 />
 
@@ -110,8 +112,10 @@ const CreateItem: React.FC = () => {
                   placeholder="Add any helpful details for the finder..."
                   value={formData.description}
                   onChange={handleChange}
-                  InputProps={{
-                    startAdornment: <DescriptionIcon sx={{ mr: 1, color: 'text.secondary', mt: 1.5, alignSelf: 'flex-start' }} />,
+                  slotProps={{
+                    input: {
+                      startAdornment: <DescriptionIcon sx={{ mr: 1, color: 'text.secondary', mt: 1.5, alignSelf: 'flex-start' }} />,
+                    }
                   }}
                 />
 
@@ -122,8 +126,10 @@ const CreateItem: React.FC = () => {
                   placeholder="https://example.com/item.jpg"
                   value={formData.image_url}
                   onChange={handleChange}
-                  InputProps={{
-                    startAdornment: <ImageIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  slotProps={{
+                    input: {
+                      startAdornment: <ImageIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }
                   }}
                 />
 
@@ -152,7 +158,7 @@ const CreateItem: React.FC = () => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={5}>
+        <Grid size={{ xs: 12, md: 5 }}>
           <QRPreview qrImageBase64={qrImage || ''} />
         </Grid>
       </Grid>
