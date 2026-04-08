@@ -56,7 +56,7 @@ async def get_user_messages(user_id: str):
     try:
         # Join with items to get item name
         response = supabase.table("messages") \
-            .select("*, items(item_name)") \
+            .select("*, items(item_name, is_lost)") \
             .eq("receiver_id", user_id) \
             .order("created_at", desc=True) \
             .execute()

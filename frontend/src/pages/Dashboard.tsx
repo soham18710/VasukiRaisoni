@@ -31,7 +31,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserItems, updateItemStatus, deleteItem } from '../services/api';
+import { getUserItems, updateItemStatus, deleteItem, generateQR } from '../services/api';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -93,6 +93,26 @@ const Dashboard: React.FC = () => {
       } catch (error) {
         console.error('Error deleting item:', error);
       }
+    }
+  };
+
+  const handleDownloadQR = async () => {
+    if (!selectedItem) return;
+    try {
+      const response = await generateQR({
+        item_id: selectedItem.id,
+        qr_id: selectedItem.qr_id
+      });
+      const link = document.createElement('a');
+      link.href = response.qr_image;
+      link.download = `findly-qr-${selectedItem.item_name}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      handleMenuClose();
+    } catch (error) {
+      console.error('Error generating QR for download:', error);
+      alert('Failed to generate QR code for download.');
     }
   };
 
@@ -234,15 +254,6 @@ const Dashboard: React.FC = () => {
             </Box>
           </Paper>
 
-          <Paper sx={{ p: 3, borderRadius: 4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Support Findly</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Upgrade to Premium for real-time GPS tracking and advanced security features.
-            </Typography>
-            <Button fullWidth variant="contained" color="secondary" sx={{ borderRadius: 2 }}>
-              Upgrade Now
-            </Button>
-          </Paper>
         </Grid>
       </Grid>
 
@@ -265,7 +276,7 @@ const Dashboard: React.FC = () => {
           </ListItemIcon>
           <ListItemText>{selectedItem?.is_lost ? 'Mark as Safe' : 'Mark as Lost'}</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => { handleMenuClose(); alert('Download feature coming soon!'); }}>
+        <MenuItem onClick={handleDownloadQR}>
           <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
           <ListItemText>Download QR</ListItemText>
         </MenuItem>
