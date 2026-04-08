@@ -59,4 +59,14 @@ export const getMessageThread = async (user1: string, user2: string, itemId: str
   return response.data;
 };
 
+export const deleteMessageThread = async (user1: string, user2: string, itemId: string) => {
+  const response = await api.delete(`/messages/thread/${user1}/${user2}/${itemId}`);
+  return response.data;
+};
+
+export const deleteGuestChat = async (itemId: string, senderName: string) => {
+  const response = await api.delete(`/messages/guest/${itemId}/${senderName}`);
+  return response.data;
+};
+
 export default api;

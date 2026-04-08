@@ -69,3 +69,6 @@ CREATE POLICY "Anyone can send a message" ON public.messages
 
 CREATE POLICY "Anyone can view messages" ON public.messages
     FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can delete messages" ON public.messages
+    FOR DELETE USING (true);

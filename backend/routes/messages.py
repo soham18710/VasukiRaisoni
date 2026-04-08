@@ -85,3 +85,47 @@ async def get_message_thread(user1: str, user2: str, item_id: str):
     except Exception as e:
         print(f"Error fetching thread: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/messages/thread/{user1}/{user2}/{item_id}")
+async def delete_message_thread(user1: str, user2: str, item_id: str):
+    from main import supabase
+    
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase client not initialized")
+        
+    try:
+        print(f"Deleting thread: {user1} <-> {user2} for item {item_id}")
+        # Delete messages between two users regarding a specific item
+        # Participants are either sender or receiver
+        response = supabase.table("messages") \
+            .delete() \
+            .eq("item_id", item_id) \
+            .or_(f"and(sender_id.eq.{user1},receiver_id.eq.{user2}),and(sender_id.eq.{user2},receiver_id.eq.{user1})") \
+            .execute()
+        print(f"Delete result: {response.data}")
+        return {"status": "success", "message": "Chat deleted"}
+    except Exception as e:
+        print(f"Error deleting thread: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/messages/guest/{item_id}/{sender_name}")
+async def delete_guest_chat(item_id: str, sender_name: str):
+    from main import supabase
+    
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase client not initialized")
+        
+    try:
+        print(f"Deleting guest chat: {sender_name} for item {item_id}")
+        # Delete guest messages (no sender_id)
+        response = supabase.table("messages") \
+            .delete() \
+            .eq("item_id", item_id) \
+            .eq("sender_name", sender_name) \
+            .is_("sender_id", "null") \
+            .execute()
+        print(f"Delete result: {response.data}")
+        return {"status": "success", "message": "Guest chat deleted"}
+    except Exception as e:
+        print(f"Error deleting guest chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

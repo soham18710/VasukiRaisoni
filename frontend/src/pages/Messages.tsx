@@ -13,7 +13,9 @@ import {
   CircularProgress,
   Alert,
   Tabs,
-  Tab
+  Tab,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import { 
   Message as MessageIcon, 
@@ -22,11 +24,12 @@ import {
   Person as PersonIcon,
   DeleteSweep as SpamIcon,
   CheckCircle as ValidIcon,
-  Lock as LockIcon
+  Lock as LockIcon,
+  DeleteOutlined as DeleteIcon
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { getUserMessages } from '../services/api';
+import { getUserMessages, deleteMessageThread, deleteGuestChat } from '../services/api';
 
 const Messages: React.FC = () => {
   const { user } = useAuth();
@@ -63,12 +66,31 @@ const Messages: React.FC = () => {
     }
   };
 
+  const handleDeleteChat = async (e: React.MouseEvent, msg: any) => {
+    e.stopPropagation();
+    
+    if (!window.confirm("Are you sure you want to delete this whole chat? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      if (msg.sender_id) {
+        await deleteMessageThread(user!.id, msg.sender_id, msg.item_id);
+      } else {
+        await deleteGuestChat(msg.item_id, msg.sender_name);
+      }
+      fetchMessages();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete chat.");
+    }
+  };
+
   // Group messages by conversation (sender + item)
   const groupMessages = (msgList: any[]) => {
     const groups: { [key: string]: any } = {};
     
     msgList.forEach(msg => {
-      // Unique key for conversation: combination of sender (ID/Email/Name) and item
       const conversationKey = `${msg.sender_id || msg.sender_email || msg.sender_name}_${msg.item_id}`;
       
       if (!groups[conversationKey] || new Date(msg.created_at) > new Date(groups[conversationKey].created_at)) {
@@ -76,7 +98,7 @@ const Messages: React.FC = () => {
       }
     });
 
-    return Object.values(groups).sort((a, b) => 
+    return Object.values(groups).sort((a: any, b: any) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   };
@@ -135,13 +157,20 @@ const Messages: React.FC = () => {
                         <Chip label="Verified User" size="small" color="success" variant="filled" sx={{ height: 20, fontSize: '10px' }} />
                       )}
                     </Box>
-                    <Chip 
-                      icon={<InventoryIcon sx={{ fontSize: '14px !important' }} />} 
-                      label={msg.items?.item_name || 'Deleted Item'} 
-                      size="small" 
-                      variant="outlined" 
-                      color={tabValue === 0 ? "primary" : "default"}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip 
+                        icon={<InventoryIcon sx={{ fontSize: '14px !important' }} />} 
+                        label={msg.items?.item_name || 'Deleted Item'} 
+                        size="small" 
+                        variant="outlined" 
+                        color={tabValue === 0 ? "primary" : "default"}
+                      />
+                      <Tooltip title="Delete Chat">
+                        <IconButton size="small" color="error" onClick={(e) => handleDeleteChat(e, msg)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Box>
                   
                   <Typography
