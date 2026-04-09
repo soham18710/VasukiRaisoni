@@ -20,11 +20,13 @@ import {
   Dashboard as DashboardIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
-  Apps as AppsIcon
+  Apps as AppsIcon,
+  EmojiEvents as TrophyIcon,
+  Coffee as CoffeeIcon,
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getUserMessages } from '../services/api';
+import { getUserMessages, getRewardBalance } from '../services/api';
 
 const Navbar: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -32,6 +34,7 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [coins, setCoins] = React.useState<number>(0);
 
   // Poll for unread messages
   React.useEffect(() => {
@@ -42,8 +45,11 @@ const Navbar: React.FC = () => {
         const messages = await getUserMessages(user.id);
         const count = messages.filter((m: any) => m.receiver_id === user.id && !m.is_read).length;
         setUnreadCount(count);
+        
+        const bal = await getRewardBalance(user.id);
+        setCoins(bal.coins || 0);
       } catch (err) {
-        console.error("Failed to fetch unread count", err);
+        console.error("Failed to fetch notification data", err);
       }
     };
 
@@ -152,6 +158,25 @@ const Navbar: React.FC = () => {
               </Box>
             ) : (
               <>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1, 
+                    px: 2, 
+                    py: 0.8, 
+                    borderRadius: 3, 
+                    bgcolor: alpha('#ffd700', 0.1),
+                    border: '1px solid',
+                    borderColor: alpha('#ffd700', 0.2),
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <CoffeeIcon sx={{ color: '#ffd700', fontSize: 18 }} />
+                  <Typography sx={{ fontWeight: 800, color: '#ffd700', fontSize: '0.9rem' }}>
+                    {coins}
+                  </Typography>
+                </Box>
                 <Tooltip title="Account">
                   <IconButton onClick={handleOpenUserMenu} sx={{ p: 0, border: '2px solid', borderColor: alpha('#3f80ff', 0.5) }}>
                     <Avatar 
@@ -185,6 +210,9 @@ const Navbar: React.FC = () => {
                   <Divider sx={{ my: 0.5 }} />
                   <MenuItem onClick={() => { handleCloseUserMenu(); navigate('/profile'); }} sx={{ borderRadius: 1.5 }}>
                     <PersonIcon sx={{ mr: 1.5, fontSize: 20, color: 'text.secondary' }} /> Profile
+                  </MenuItem>
+                  <MenuItem onClick={() => { handleCloseUserMenu(); navigate('/rewards'); }} sx={{ borderRadius: 1.5 }}>
+                    <CoffeeIcon sx={{ mr: 1.5, fontSize: 20, color: 'text.secondary' }} /> Rewards
                   </MenuItem>
                   <MenuItem onClick={handleLogout} sx={{ borderRadius: 1.5, color: 'error.main' }}>
                     <LogoutIcon sx={{ mr: 1.5, fontSize: 20 }} /> Logout

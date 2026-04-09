@@ -74,4 +74,20 @@ export const markMessagesRead = async (user1: string, user2: string, itemId: str
   return response.data;
 };
 
+// Rewards / Coins API
+export const sendCoins = async (data: { sender_id: string; receiver_id: string; amount: number; message?: string }) => {
+  const response = await api.post('/rewards/send', data);
+  return response.data;
+};
+
+export const getRewardBalance = async (userId: string) => {
+  const response = await api.get(`/rewards/balance/${userId}`);
+  return response.data;
+};
+
+export const getTransactions = async (userId: string) => {
+  const response = await api.get(`/rewards/transactions/${userId}`);
+  return response.data;
+};
+
 export default api;

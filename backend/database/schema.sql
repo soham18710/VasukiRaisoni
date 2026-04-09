@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     email TEXT UNIQUE NOT NULL,
     full_name TEXT NOT NULL,
     password_hash TEXT NOT NULL, -- plain text for hackathon demo
+    coins INTEGER DEFAULT 50, -- Start with 50 coins
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -48,14 +49,26 @@ CREATE TABLE IF NOT EXISTS public.messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Enable RLS
+-- 4. Coin Transactions Table
+CREATE TABLE IF NOT EXISTS public.coin_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES public.users(id),
+    receiver_id UUID NOT NULL REFERENCES public.users(id),
+    amount INTEGER NOT NULL,
+    message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.coin_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scan_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- 5. Clear existing policies to avoid "already exists" errors
+-- 6. Clear existing policies
 DROP POLICY IF EXISTS "Anyone can manage users" ON public.users;
+DROP POLICY IF EXISTS "Anyone can manage transactions" ON public.coin_transactions;
 DROP POLICY IF EXISTS "Public handle items" ON public.items;
 DROP POLICY IF EXISTS "Public can view item by qr_id" ON public.items;
 DROP POLICY IF EXISTS "Anyone can create a scan report" ON public.scan_reports;
@@ -88,3 +101,6 @@ CREATE POLICY "Anyone can view messages" ON public.messages
 
 CREATE POLICY "Anyone can delete messages" ON public.messages
     FOR DELETE USING (true);
+-- Transactions
+CREATE POLICY "Anyone can manage transactions" ON public.coin_transactions
+    FOR ALL USING (true) WITH CHECK (true);

@@ -1,57 +1,83 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { 
-  Container, 
-  Typography, 
-  Box, 
-  Paper, 
-  TextField, 
-  Button, 
-  Avatar, 
-  IconButton, 
-  CircularProgress
+import {
+  Typography,
+  Box,
+  TextField,
+  Button,
+  Avatar,
+  IconButton,
+  CircularProgress,
+  Chip,
+  Collapse,
+  Alert,
 } from '@mui/material';
-import { 
-  Send as SendIcon, 
+import {
+  Send as SendIcon,
   ArrowBack as BackIcon,
-  Person as PersonIcon
+  QrCode as QrCodeIcon,
+  Coffee as CoffeeIcon,
+  EmojiEvents as TrophyIcon,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getMessageThread, sendMessage, markMessagesRead } from '../services/api';
+import { 
+  getMessageThread, 
+  sendMessage, 
+  markMessagesRead, 
+  sendCoins, 
+  getRewardBalance 
+} from '../services/api';
 
 const Chat: React.FC = () => {
-  const { userId, itemId } = useParams<{ userId: string, itemId: string }>();
+  const { userId, itemId } = useParams<{ userId: string; itemId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showRewards, setShowRewards] = useState(false);
+  const [rewardAmount, setRewardAmount] = useState<number | null>(null);
+  const [rewardLoading, setRewardLoading] = useState(false);
+  const [rewardError, setRewardError] = useState<string | null>(null);
+  const [rewardSuccess, setRewardSuccess] = useState(false);
+  const [userCoins, setUserCoins] = useState(0);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
   useEffect(() => {
     if (user && userId && itemId) {
       fetchThread();
-      const interval = setInterval(fetchThread, 5000); // Poll every 5s for hackathon
+      fetchBalance();
+      const interval = setInterval(() => {
+        fetchThread();
+        fetchBalance();
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [user, userId, itemId]);
 
+  const fetchBalance = async () => {
+    try {
+      const data = await getRewardBalance(user!.id);
+      setUserCoins(data.coins || 0);
+    } catch (e) {
+      console.error("Error fetching balance:", e);
+    }
+  };
+
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const fetchThread = async () => {
     try {
       const data = await getMessageThread(user!.id, userId!, itemId!);
       setMessages(data);
-      
-      // If no messages yet, pre-fill with item info
+
       if (data.length === 0 && !newMessage) {
         setNewMessage(`Hey, I found your item [${itemId}]. Let's coordinate the return!`);
       }
 
-      // Mark incoming messages as read
       const hasUnread = data.some((m: any) => m.receiver_id === user!.id && !m.is_read);
       if (hasUnread) {
         await markMessagesRead(user!.id, userId!, itemId!);
@@ -63,10 +89,6 @@ const Chat: React.FC = () => {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
@@ -76,9 +98,9 @@ const Chat: React.FC = () => {
       await sendMessage({
         item_id: itemId!,
         sender_id: user!.id,
-        sender_name: user?.user_metadata?.full_name || user?.email || 'Me',
+        sender_name: user?.full_name || user?.email || 'Me',
         message_text: newMessage,
-        receiver_id: userId!
+        receiver_id: userId!,
       });
       setNewMessage('');
       fetchThread();
@@ -89,70 +111,271 @@ const Chat: React.FC = () => {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(e as any);
+    }
+  };
+
+  const handleSendCoins = async () => {
+    if (!rewardAmount || rewardLoading) return;
+    
+    setRewardLoading(true);
+    setRewardError(null);
+    setRewardSuccess(false);
+    
+    try {
+      await sendCoins({
+        sender_id: user!.id,
+        receiver_id: userId!,
+        amount: rewardAmount,
+        message: `Awarded ${rewardAmount} coins for helping with item ${itemId}! ☕`
+      });
+
+      // Also send a formal chat message so it's visible in the thread
+      await sendMessage({
+        item_id: itemId!,
+        sender_id: user!.id,
+        sender_name: user?.full_name || user?.email || 'Me',
+        message_text: `✨ I just sent you ${rewardAmount} Reward Coins as a thank you! ☕ Check your Rewards page to see your balance.`,
+        receiver_id: userId!,
+      });
+      
+      setRewardSuccess(true);
+      setRewardAmount(null);
+      fetchThread(); // Refresh messages to show the reward notification
+      fetchBalance();
+      
+      // Auto close after 3s
+      setTimeout(() => {
+        setShowRewards(false);
+        setRewardSuccess(false);
+      }, 3000);
+    } catch (err: any) {
+      setRewardError(err.response?.data?.detail || "Failed to send coins.");
+    } finally {
+      setRewardLoading(false);
+    }
+  };
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 80px)' }}>
+        <CircularProgress sx={{ color: '#3f80ff' }} />
       </Box>
     );
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 4, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
-      <Paper sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 3 }}>
-        <IconButton onClick={() => navigate('/messages')}>
+    <Box sx={{
+      height: 'calc(100vh - 72px)',
+      display: 'flex',
+      flexDirection: 'column',
+      bgcolor: '#0a0c10',
+    }}>
+      {/* Header */}
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        px: { xs: 2, sm: 3 },
+        py: 1.5,
+        bgcolor: 'rgba(22,27,34,0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+      }}>
+        <IconButton
+          onClick={() => navigate('/messages')}
+          sx={{ color: '#8b949e', '&:hover': { color: '#f0f6fc', bgcolor: 'rgba(255,255,255,0.06)' }, borderRadius: 2 }}
+        >
           <BackIcon />
         </IconButton>
-        <Avatar />
+
+        <Avatar
+          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`}
+          sx={{ width: 40, height: 40, border: '2px solid rgba(63,128,255,0.4)' }}
+        />
+
         <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-            Chat regarding Item
+          <Typography sx={{ fontWeight: 700, color: '#f0f6fc', fontSize: '0.95rem' }}>
+            Chat Thread
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Secure One-to-One Channel
+          <Typography sx={{ color: '#8b949e', fontSize: '0.75rem' }}>
+            Secure one-to-one channel
           </Typography>
         </Box>
-      </Paper>
 
-      <Paper sx={{ 
-        flexGrow: 1, 
-        mb: 2, 
-        p: 2, 
-        overflowY: 'auto', 
-        display: 'flex', 
+        <Chip
+          icon={<QrCodeIcon sx={{ fontSize: '14px !important', color: '#3f80ff !important' }} />}
+          label={itemId}
+          size="small"
+          sx={{
+            bgcolor: 'rgba(63,128,255,0.1)',
+            color: '#3f80ff',
+            border: '1px solid rgba(63,128,255,0.2)',
+            fontFamily: 'monospace',
+            fontSize: '0.7rem',
+          }}
+        />
+
+        <Button
+          startIcon={<CoffeeIcon />}
+          size="small"
+          onClick={() => setShowRewards(!showRewards)}
+          sx={{
+            ml: 1,
+            bgcolor: showRewards ? '#ffd700' : 'rgba(255,215,0,0.1)',
+            color: showRewards ? '#000' : '#ffd700',
+            fontWeight: 700,
+            borderRadius: 2,
+            fontSize: '0.75rem',
+            '&:hover': { bgcolor: showRewards ? '#ffc400' : 'rgba(255,215,0,0.2)' }
+          }}
+        >
+          Reward
+        </Button>
+      </Box>
+
+      {/* Rewards Panel */}
+      <Collapse in={showRewards}>
+        <Box sx={{ 
+          p: 2, 
+          bgcolor: 'rgba(255,215,0,0.05)', 
+          borderBottom: '1px solid rgba(255,215,0,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <Typography sx={{ color: '#ffd700', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CoffeeIcon fontSize="small" /> Buy them a coffee
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {[5, 10, 25, 50].map(amount => (
+              <Button
+                key={amount}
+                variant="outlined"
+                size="small"
+                onClick={() => setRewardAmount(amount)}
+                disabled={amount > userCoins}
+                sx={{
+                  borderRadius: 2,
+                  borderColor: rewardAmount === amount ? '#ffd700' : 'rgba(255,215,0,0.3)',
+                  color: rewardAmount === amount ? '#000' : '#ffd700',
+                  bgcolor: rewardAmount === amount ? '#ffd700' : 'transparent',
+                  fontWeight: 700,
+                  '&:hover': { borderColor: '#ffd700' }
+                }}
+              >
+                {amount} ☕
+              </Button>
+            ))}
+          </Box>
+
+          <Collapse in={!!rewardError}>
+            <Alert severity="error" sx={{ bgcolor: 'transparent', color: '#ff6b6b' }}>{rewardError}</Alert>
+          </Collapse>
+
+          <Collapse in={rewardSuccess}>
+            <Alert severity="success" sx={{ bgcolor: 'transparent', color: '#34d399' }}>Coins sent! Thank you for your generosity! ✨</Alert>
+          </Collapse>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="caption" sx={{ color: '#8b949e' }}>
+              Your Balance: <Box component="span" sx={{ color: '#ffd700', fontWeight: 700 }}>{userCoins} coins</Box>
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={!rewardAmount || rewardLoading}
+              onClick={handleSendCoins}
+              sx={{
+                bgcolor: '#ffd700',
+                color: '#000',
+                borderRadius: 2,
+                fontWeight: 800,
+                '&:hover': { bgcolor: '#ffc400' }
+              }}
+            >
+              {rewardLoading ? <CircularProgress size={16} color="inherit" /> : 'Send Gratitude'}
+            </Button>
+          </Box>
+        </Box>
+      </Collapse>
+
+      {/* Messages Area */}
+      <Box sx={{
+        flexGrow: 1,
+        overflowY: 'auto',
+        px: { xs: 2, sm: 4 },
+        py: 3,
+        display: 'flex',
         flexDirection: 'column',
-        gap: 1,
-        borderRadius: 4,
-        bgcolor: 'rgba(0,0,0,0.01)'
+        gap: 1.5,
+        '&::-webkit-scrollbar': { width: 5 },
+        '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
+        '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 4 },
       }}>
+        {messages.length === 0 && (
+          <Box sx={{ textAlign: 'center', mt: 8 }}>
+            <Box sx={{
+              display: 'inline-flex', p: 2.5, borderRadius: '50%',
+              background: 'rgba(63,128,255,0.1)', mb: 2,
+            }}>
+              <SendIcon sx={{ fontSize: 32, color: '#3f80ff' }} />
+            </Box>
+            <Typography sx={{ color: '#8b949e', fontWeight: 600 }}>No messages yet</Typography>
+            <Typography sx={{ color: '#8b949e', fontSize: '0.8rem' }}>Send the first message below</Typography>
+          </Box>
+        )}
+
         {messages.map((msg) => {
           const isMe = msg.sender_id === user?.id;
           return (
-            <Box 
+            <Box
               key={msg.id}
-              sx={{ 
+              sx={{
                 alignSelf: isMe ? 'flex-end' : 'flex-start',
-                maxWidth: '80%',
+                maxWidth: { xs: '85%', sm: '65%' },
                 display: 'flex',
-                gap: 1,
-                flexDirection: isMe ? 'row-reverse' : 'row'
+                flexDirection: isMe ? 'row-reverse' : 'row',
+                gap: 1.5,
+                alignItems: 'flex-end',
               }}
             >
-              <Avatar sx={{ width: 24, height: 24, mt: 1, display: { xs: 'none', sm: 'flex' } }}>
-                <PersonIcon sx={{ fontSize: 16 }} />
-              </Avatar>
+              <Avatar
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id || msg.sender_name}`}
+                sx={{ width: 28, height: 28, flexShrink: 0, display: { xs: 'none', sm: 'flex' } }}
+              />
               <Box>
-                <Paper sx={{ 
-                  p: 1.5, 
-                  px: 2,
-                  bgcolor: isMe ? 'primary.main' : 'white',
-                  color: isMe ? 'white' : 'text.primary',
-                  borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                {!isMe && (
+                  <Typography sx={{ color: '#8b949e', fontSize: '0.72rem', mb: 0.5, px: 0.5, fontWeight: 600 }}>
+                    {msg.sender_name}
+                  </Typography>
+                )}
+                <Box sx={{
+                  p: '10px 16px',
+                  background: isMe
+                    ? 'linear-gradient(135deg, #3f80ff 0%, #7c4dff 100%)'
+                    : 'rgba(30,37,47,0.95)',
+                  color: isMe ? '#fff' : '#e6edf3',
+                  borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                  border: isMe ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                  boxShadow: isMe
+                    ? '0 4px 16px rgba(63,128,255,0.25)'
+                    : '0 2px 8px rgba(0,0,0,0.3)',
                 }}>
-                  <Typography variant="body2">{msg.message_text}</Typography>
-                </Paper>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textAlign: isMe ? 'right' : 'left', px: 1 }}>
+                  <Typography sx={{ fontSize: '0.88rem', lineHeight: 1.5 }}>
+                    {msg.message_text}
+                  </Typography>
+                </Box>
+                <Typography sx={{
+                  color: '#8b949e', fontSize: '0.68rem', mt: 0.5,
+                  textAlign: isMe ? 'right' : 'left', px: 0.5,
+                }}>
                   {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Typography>
               </Box>
@@ -160,32 +383,63 @@ const Chat: React.FC = () => {
           );
         })}
         <div ref={messagesEndRef} />
-      </Paper>
+      </Box>
 
-      <Box component="form" onSubmit={handleSend} sx={{ display: 'flex', gap: 1 }}>
+      {/* Input Bar */}
+      <Box
+        component="form"
+        onSubmit={handleSend}
+        sx={{
+          display: 'flex',
+          gap: 1.5,
+          px: { xs: 2, sm: 4 },
+          py: 2,
+          bgcolor: 'rgba(22,27,34,0.95)',
+          backdropFilter: 'blur(12px)',
+          borderTop: '1px solid rgba(255,255,255,0.07)',
+          alignItems: 'flex-end',
+        }}
+      >
         <TextField
           fullWidth
-          placeholder="Type your message..."
+          multiline
+          maxRows={4}
+          placeholder="Type a message... (Enter to send)"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
           variant="outlined"
           size="small"
-          slotProps={{
-            input: {
-              sx: { borderRadius: 3 }
-            }
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              bgcolor: 'rgba(255,255,255,0.04)',
+              borderRadius: 3,
+              color: '#f0f6fc',
+              fontSize: '0.9rem',
+              '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+              '&:hover fieldset': { borderColor: 'rgba(63,128,255,0.4)' },
+              '&.Mui-focused fieldset': { borderColor: '#3f80ff', borderWidth: 1.5 },
+            },
+            '& .MuiInputBase-input::placeholder': { color: '#8b949e', opacity: 1 },
           }}
         />
-        <Button 
-          type="submit" 
-          variant="contained" 
+        <IconButton
+          type="submit"
           disabled={!newMessage.trim() || sending}
-          sx={{ borderRadius: 3, minWidth: '48px', px: 2 }}
+          sx={{
+            width: 44, height: 44, flexShrink: 0,
+            background: newMessage.trim() ? 'linear-gradient(135deg, #3f80ff 0%, #7c4dff 100%)' : 'rgba(255,255,255,0.05)',
+            color: '#fff',
+            borderRadius: 3,
+            transition: 'all 0.2s',
+            '&:hover': { transform: 'scale(1.05)', boxShadow: '0 4px 16px rgba(63,128,255,0.4)' },
+            '&:disabled': { opacity: 0.4, background: 'rgba(255,255,255,0.05)' },
+          }}
         >
-          {sending ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
-        </Button>
+          {sending ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : <SendIcon sx={{ fontSize: 20 }} />}
+        </IconButton>
       </Box>
-    </Container>
+    </Box>
   );
 };
 

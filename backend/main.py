@@ -25,9 +25,8 @@ supabase: Client = create_client(url, key) if url and key else None
 def read_root():
     return {"message": "Welcome to Findly API"}
 
-from routes import items, qr, messages
+from routes import items, qr, messages, rewards
 app.include_router(items.router)
 app.include_router(qr.router)
 app.include_router(messages.router)
-# app.include_router(scan.router)
-# app.include_router(scan.router)
+app.include_router(rewards.router)
