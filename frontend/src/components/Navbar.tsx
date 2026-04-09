@@ -155,7 +155,7 @@ const Navbar: React.FC = () => {
                 <Tooltip title="Account">
                   <IconButton onClick={handleOpenUserMenu} sx={{ p: 0, border: '2px solid', borderColor: alpha('#3f80ff', 0.5) }}>
                     <Avatar 
-                      alt={user.email || 'User'} 
+                      alt={user.full_name || 'User'} 
                       src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} 
                       sx={{ width: 34, height: 34 }} 
                     />
@@ -176,7 +176,7 @@ const Navbar: React.FC = () => {
                 >
                   <Box sx={{ px: 2, py: 1.5 }}>
                     <Typography variant="subtitle2" noWrap sx={{ fontWeight: 800 }}>
-                      {user.user_metadata?.full_name || 'My Account'}
+                      {user.full_name || 'My Account'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
                       {user.email}

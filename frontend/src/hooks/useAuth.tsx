@@ -1,45 +1,54 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/supabase';
-import type { User, Session } from '@supabase/supabase-js';
+
+export interface LocalUser {
+  id: string;
+  email: string;
+  full_name: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: LocalUser | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  signOut: () => void;
+  setUser: (user: LocalUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const LOCAL_STORAGE_KEY = 'findly_user';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUserState] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // Load user from localStorage on mount
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (stored) {
+      try {
+        setUserState(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+      }
+    }
+    setLoading(false);
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const setUser = (u: LocalUser | null) => {
+    setUserState(u);
+    if (u) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(u));
+    } else {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
+  };
+
+  const signOut = () => {
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, setUser }}>
       {children}
     </AuthContext.Provider>
   );

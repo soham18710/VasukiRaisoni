@@ -18,6 +18,7 @@ import {
   ArrowForward as ArrowForwardIcon 
 } from '@mui/icons-material';
 import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
 import AuthLayout from '../components/AuthLayout';
 
 const Login: React.FC = () => {
@@ -27,22 +28,41 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Look up user in public.users by email + password
+    const { data: foundUser, error: dbError } = await supabase
+      .from('users')
+      .select('id, email, full_name, password_hash')
+      .eq('email', email)
+      .maybeSingle();
 
-    if (error) {
-      setError(error.message);
-    } else {
-      navigate('/dashboard');
+    if (dbError) {
+      setError(dbError.message);
+      setLoading(false);
+      return;
     }
+
+    if (!foundUser) {
+      setError('No account found with this email. Please sign up first.');
+      setLoading(false);
+      return;
+    }
+
+    if (foundUser.password_hash !== password) {
+      setError('Incorrect password. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    // Save user to localStorage and context
+    setUser({ id: foundUser.id, email: foundUser.email, full_name: foundUser.full_name });
+    navigate('/dashboard');
     setLoading(false);
   };
 

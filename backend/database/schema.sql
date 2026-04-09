@@ -4,7 +4,16 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. Items Table
+-- 1. Users Table (custom auth - no Supabase Auth)
+CREATE TABLE IF NOT EXISTS public.users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL,
+    password_hash TEXT NOT NULL, -- plain text for hackathon demo
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Items Table
 CREATE TABLE IF NOT EXISTS public.items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL, -- references auth.users(id)
@@ -40,11 +49,13 @@ CREATE TABLE IF NOT EXISTS public.messages (
 );
 
 -- 4. Enable RLS
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scan_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- 5. Clear existing policies to avoid "already exists" errors
+DROP POLICY IF EXISTS "Anyone can manage users" ON public.users;
 DROP POLICY IF EXISTS "Public handle items" ON public.items;
 DROP POLICY IF EXISTS "Public can view item by qr_id" ON public.items;
 DROP POLICY IF EXISTS "Anyone can create a scan report" ON public.scan_reports;
@@ -53,6 +64,10 @@ DROP POLICY IF EXISTS "Anyone can send a message" ON public.messages;
 DROP POLICY IF EXISTS "Anyone can view messages" ON public.messages;
 
 -- 6. Create robust policies
+-- Users: fully open for hackathon demo (no Supabase Auth)
+CREATE POLICY "Anyone can manage users" ON public.users
+    FOR ALL USING (true) WITH CHECK (true);
+
 -- Items: Relaxed for Hackathon Demo
 CREATE POLICY "Public handle items" ON public.items
     FOR ALL USING (true) WITH CHECK (true);

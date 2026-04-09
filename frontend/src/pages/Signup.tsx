@@ -19,6 +19,7 @@ import {
   PersonAdd as PersonAddIcon 
 } from '@mui/icons-material';
 import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
 import AuthLayout from '../components/AuthLayout';
 
 const Signup: React.FC = () => {
@@ -29,27 +30,48 @@ const Signup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
-        },
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      navigate('/dashboard');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      setLoading(false);
+      return;
     }
+
+    // Check if email already exists
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existing) {
+      setError('An account with this email already exists. Please sign in.');
+      setLoading(false);
+      return;
+    }
+
+    // Insert new user into public.users table
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert([{ email, full_name: name, password_hash: password }])
+      .select()
+      .single();
+
+    if (insertError) {
+      setError(insertError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Save to localStorage and context
+    setUser({ id: newUser.id, email: newUser.email, full_name: newUser.full_name });
+    navigate('/dashboard');
     setLoading(false);
   };
 
